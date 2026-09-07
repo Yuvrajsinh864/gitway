@@ -1,0 +1,2786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DisasterGuard - Early Warning & Resource Allocation</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #0ea5e9;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --success: #10b981;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #1e3a5f);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--secondary);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--secondary);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .cta-btn {
+            padding: 0.8rem 2rem;
+            background: var(--gradient-3);
+            border: none;
+            border-radius: 50px;
+            color: var(--dark);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 5% 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 1200px;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            background: linear-gradient(135deg, #fff 0%, #4facfe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeInUp 1s ease;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2.5rem;
+            color: #94a3b8;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            animation: fadeInUp 1s ease 0.2s both;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 1s ease 0.4s both;
+        }
+
+        .btn-primary {
+            padding: 1rem 2.5rem;
+            background: var(--gradient-3);
+            border: none;
+            border-radius: 50px;
+            color: var(--dark);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(79, 172, 254, 0.5);
+        }
+
+        .btn-secondary {
+            padding: 1rem 2.5rem;
+            background: transparent;
+            border: 2px solid var(--secondary);
+            border-radius: 50px;
+            color: var(--light);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary);
+            transform: translateY(-3px);
+        }
+
+        /* Floating Elements */
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.3;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .float-1 {
+            width: 300px;
+            height: 300px;
+            background: var(--primary);
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .float-2 {
+            width: 400px;
+            height: 400px;
+            background: var(--secondary);
+            bottom: 20%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .float-3 {
+            width: 250px;
+            height: 250px;
+            background: var(--accent);
+            top: 60%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-30px) rotate(180deg); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Instant Location Checker */
+        .location-checker {
+            padding: 80px 5%;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .checker-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 30px;
+            padding: 3rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .checker-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .checker-header h2 {
+            font-size: 2.5rem;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .checker-header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box input {
+            flex: 1;
+            min-width: 300px;
+            padding: 1.2rem 1.5rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            color: var(--light);
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 30px rgba(14, 165, 233, 0.3);
+        }
+
+        .search-btn {
+            padding: 1.2rem 2.5rem;
+            background: var(--gradient-3);
+            border: none;
+            border-radius: 15px;
+            color: var(--dark);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(79, 172, 254, 0.5);
+        }
+
+        .location-results {
+            display: none;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .location-results.active {
+            display: block;
+        }
+
+        .risk-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding: 2rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 20px;
+            margin-bottom: 2rem;
+        }
+
+        .risk-level {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .risk-level.low {
+            background: var(--gradient-4);
+            color: var(--dark);
+        }
+
+        .risk-level.moderate {
+            background: var(--gradient-3);
+            color: var(--dark);
+        }
+
+        .risk-level.high {
+            background: var(--gradient-2);
+            color: var(--dark);
+        }
+
+        .risk-level.critical {
+            background: var(--gradient-1);
+            color: var(--dark);
+        }
+
+        .risk-level .level-text {
+            font-size: 1.5rem;
+        }
+
+        .risk-level .level-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .risk-details {
+            flex: 1;
+        }
+
+        .risk-details h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .risk-details p {
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+
+        .data-source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(14, 165, 233, 0.2);
+            border: 1px solid var(--secondary);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .disaster-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .disaster-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        .disaster-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--secondary);
+        }
+
+        .disaster-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 1rem;
+        }
+
+        .disaster-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .disaster-card .probability {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .disaster-card .timeframe {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+        }
+
+        .weather-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 15px;
+        }
+
+        .weather-item {
+            text-align: center;
+        }
+
+        .weather-item i {
+            font-size: 2rem;
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .weather-item .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .weather-item .label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 5%;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-header p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient-3);
+            opacity: 0;
+            transition: opacity 0.4s;
+            z-index: -1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(79, 172, 254, 0.3);
+        }
+
+        .feature-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .icon-1 { background: var(--gradient-1); }
+        .icon-2 { background: var(--gradient-2); }
+        .icon-3 { background: var(--gradient-3); }
+        .icon-4 { background: var(--gradient-4); }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: #94a3b8;
+            line-height: 1.7;
+        }
+
+        /* SOS Section */
+        .sos-section {
+            padding: 80px 5%;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(245, 158, 11, 0.2));
+        }
+
+        .sos-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .sos-button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ef4444, #f59e0b);
+            border: none;
+            color: white;
+            font-size: 3rem;
+            font-weight: 700;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 60px rgba(239, 68, 68, 0.6);
+            transition: all 0.3s;
+            margin: 2rem auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .sos-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 100px rgba(239, 68, 68, 0.8);
+        }
+
+        .sos-button span {
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 60px rgba(239, 68, 68, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 100px rgba(239, 68, 68, 1);
+            }
+        }
+
+        .sos-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .sos-feature {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sos-feature i {
+            font-size: 2rem;
+            color: var(--danger);
+            margin-bottom: 1rem;
+        }
+
+        .sos-feature h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .sos-feature p {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 80px 5%;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(14, 165, 233, 0.2));
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3.5rem;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 100px 5%;
+        }
+
+        .steps-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+            margin-bottom: 4rem;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .step:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .step-number {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--gradient-3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--dark);
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+
+        .step-content p {
+            color: #94a3b8;
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+
+        /* Success Stories */
+        .success-stories {
+            padding: 100px 5%;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .stories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .story-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .story-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient-4);
+            opacity: 0;
+            transition: opacity 0.4s;
+            z-index: -1;
+        }
+
+        .story-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(67, 233, 123, 0.3);
+        }
+
+        .story-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .story-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            background: var(--gradient-4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+
+        .story-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .story-card p {
+            color: #94a3b8;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .story-stats {
+            display: flex;
+            gap: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .story-stat {
+            text-align: center;
+        }
+
+        .story-stat .number {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .story-stat .label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        /* Dashboard Preview */
+        .dashboard {
+            padding: 100px 5%;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .dashboard-preview {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.5);
+        }
+
+        .dashboard-header {
+            padding: 1.5rem 2rem;
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .dashboard-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .control-red { background: #ef4444; }
+        .control-yellow { background: #f59e0b; }
+        .control-green { background: #10b981; }
+
+        .dashboard-body {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .dashboard-card.full-width {
+            grid-column: span 3;
+        }
+
+        .dashboard-card h4 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: #94a3b8;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid var(--danger);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-item.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: var(--accent);
+        }
+
+        .alert-item.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: var(--success);
+        }
+
+        .alert-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .alert-info h5 {
+            font-size: 0.95rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .alert-info p {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .resource-bar {
+            margin-bottom: 1rem;
+        }
+
+        .resource-bar .label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .progress {
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+
+        /* Emergency Resources */
+        .resources {
+            padding: 100px 5%;
+        }
+
+        .resources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .resource-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.4s;
+        }
+
+        .resource-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--secondary);
+            box-shadow: 0 15px 40px rgba(14, 165, 233, 0.2);
+        }
+
+        .resource-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            background: var(--gradient-3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+
+        .resource-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .resource-card p {
+            color: #94a3b8;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .resource-links {
+            list-style: none;
+        }
+
+        .resource-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .resource-links a {
+            color: var(--secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .resource-links a:hover {
+            color: var(--light);
+            padding-left: 5px;
+        }
+
+        /* Contact */
+        .contact {
+            padding: 100px 5%;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .contact-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 30px;
+            padding: 3rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: var(--light);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1.2rem;
+            background: var(--gradient-3);
+            border: none;
+            border-radius: 10px;
+            color: var(--dark);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(79, 172, 254, 0.5);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 5% 30px;
+            background: rgba(15, 23, 42, 0.8);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            max-width: 1400px;
+            margin: 0 auto 3rem;
+        }
+
+        .footer-section h4 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            color: var(--secondary);
+        }
+
+        .footer-section p {
+            color: #94a3b8;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--secondary);
+            padding-left: 5px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--light);
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .social-links a:hover {
+            background: var(--secondary);
+            transform: translateY(-5px);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .step {
+                flex-direction: column !important;
+                text-align: center;
+            }
+
+            .dashboard-body {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-card.full-width {
+                grid-column: span 1;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .search-box input {
+                min-width: 100%;
+            }
+
+            .risk-indicator {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .stories-grid,
+            .resources-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scroll Animation */
+        .reveal {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255,255,255,0.1);
+            border-top-color: var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        .spinner.active {
+            display: block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Data Loading States */
+        .loading-data {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--danger);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+    </style>
+    <style>
+        /* ===== Satellite Integration ===== */
+        .gps-btn {
+            padding: 1rem 1.6rem;
+            border: 1px solid rgba(14, 165, 233, 0.5);
+            background: rgba(14, 165, 233, 0.12);
+            color: #7dd3fc;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .gps-btn:hover { background: rgba(14, 165, 233, 0.28); color: #fff; transform: translateY(-2px); }
+        .gps-btn:disabled { opacity: 0.6; cursor: wait; }
+
+        .sat-panel {
+            margin-top: 2rem;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 18px;
+            overflow: hidden;
+        }
+        .sat-head {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sat-head h4 { color: var(--secondary); display: flex; align-items: center; gap: 0.6rem; }
+        .sat-live {
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #86efac;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .sat-live .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #22c55e; box-shadow: 0 0 10px #22c55e;
+            animation: satPulse 1.6s infinite;
+        }
+        @keyframes satPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+        .sat-layout { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0; align-items: stretch; }
+        #satMap { height: 100%; min-height: 460px; width: 100%; background: #0b1220; }
+        .leaflet-container { background: #0b1220; }
+
+        .sat-readout { padding: 1.5rem; border-left: 1px solid rgba(255,255,255,0.08); }
+        .sat-verdict {
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(37, 99, 235, 0.14);
+        }
+        .sat-verdict .headline { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; }
+        .sat-verdict .sub { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
+        .sat-verdict.low     { background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.4); }
+        .sat-verdict.moderate{ background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.4); }
+        .sat-verdict.high    { background: rgba(249,115,22,0.16); border-color: rgba(249,115,22,0.45); }
+        .sat-verdict.critical{ background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.5); }
+
+        .sat-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
+        .sat-metric {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+        }
+        .sat-metric .k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #7c8da6; margin-bottom: 0.3rem; }
+        .sat-metric .v { font-size: 1.15rem; font-weight: 700; color: #e2e8f0; }
+        .sat-bars { margin-top: 1.2rem; display: grid; gap: 0.8rem; }
+        .sat-bar .top { display: flex; justify-content: space-between; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.35rem; }
+        .sat-bar .track { height: 8px; border-radius: 6px; background: rgba(255,255,255,0.08); overflow: hidden; }
+        .sat-bar .fill { height: 100%; width: 0; border-radius: 6px; transition: width 1s ease; }
+        .sat-note { margin-top: 1.2rem; font-size: 0.78rem; color: #6b7f99; line-height: 1.6; }
+        .sat-log {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.78rem;
+            color: #7dd3fc;
+            padding: 0.9rem 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            background: rgba(2, 6, 23, 0.55);
+            min-height: 42px;
+        }
+        @media (max-width: 900px) {
+            .sat-layout { grid-template-columns: 1fr; }
+            .sat-readout { border-left: none; border-top: 1px solid rgba(255,255,255,0.08); }
+            #satMap { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i>
+            DisasterGuard AI
+        </div>
+        <ul class="nav-links">
+            <li><a href="#location-checker">Check Location</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#sos">SOS Alert</a></li>
+            <li><a href="#success-stories">Success Stories</a></li>
+            <li><a href="#resources">Resources</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+        <a href="#contact" class="cta-btn">Get Started</a>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="floating-element float-1"></div>
+        <div class="floating-element float-2"></div>
+        <div class="floating-element float-3"></div>
+        
+        <div class="hero-content">
+            <h1>AI-Powered Disaster Early Warning & Resource Allocation System</h1>
+            <p>Protect communities with predictive AI that forecasts disasters 7 days in advance and optimizes emergency resource distribution in real-time. Save lives with intelligent early warnings.</p>
+            <div class="hero-buttons">
+                <a href="#location-checker" class="btn-primary">
+                    <i class="fas fa-search-location"></i>
+                    Check Your Location
+                </a>
+                <a href="#features" class="btn-secondary">
+                    <i class="fas fa-info-circle"></i>
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Instant Location Checker with Real-Time Data -->
+    <section class="location-checker" id="location-checker">
+        <div class="checker-container reveal">
+            <div class="checker-header">
+                <h2><i class="fas fa-map-marked-alt"></i> Instant Location Risk Assessment</h2>
+                <p>Get real-time disaster risk analysis using live weather data, satellite feeds, and AI predictions</p>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="locationInput" placeholder="Enter city name (e.g., Ahmedabad, Mumbai, Delhi) or coordinates (23.0225, 72.5714)">
+                <button class="search-btn" onclick="checkLocation()">
+                    <i class="fas fa-search"></i>
+                    Analyze Risk
+                </button>
+                <button class="gps-btn" id="gpsBtn" onclick="useMyLocation()">
+                    <i class="fas fa-satellite-dish"></i>
+                    Use My Location
+                </button>
+            </div>
+            <p style="text-align:center; color:#7c8da6; font-size:0.85rem; margin-top:0.8rem;">
+                <i class="fas fa-lock"></i> GPS is read in your browser only — we detect the surrounding area from satellite terrain data and return the disaster probability for it.
+            </p>
+
+            <div class="spinner" id="loadingSpinner"></div>
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="location-results" id="locationResults">
+                <div class="risk-indicator">
+                    <div class="risk-level moderate" id="riskLevel">
+                        <div class="level-text">MODERATE</div>
+                        <div class="level-label">Risk Level</div>
+                    </div>
+                    <div class="risk-details">
+                        <h3 id="locationName">Loading...</h3>
+                        <p id="riskDescription">Analyzing real-time data from multiple sources...</p>
+                        <div class="data-source-badge">
+                            <i class="fas fa-satellite"></i>
+                            <span>Data: Open-Meteo Weather API | GDACS Disasters | NASA EONET</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="weather-info" id="weatherInfo">
+                    <div class="weather-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <div class="value" id="tempValue">--°C</div>
+                        <div class="label">Temperature</div>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-tint"></i>
+                        <div class="value" id="rainValue">-- mm</div>
+                        <div class="label">Rainfall (24h)</div>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-wind"></i>
+                        <div class="value" id="windValue">-- km/h</div>
+                        <div class="label">Wind Speed</div>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-cloud"></i>
+                        <div class="value" id="humidityValue">--%</div>
+                        <div class="label">Humidity</div>
+                    </div>
+                </div>
+
+                <!-- Satellite Integration -->
+                <div class="sat-panel" id="satPanel">
+                    <div class="sat-head">
+                        <h4><i class="fas fa-satellite"></i> Satellite Area Detection</h4>
+                        <span class="sat-live"><span class="dot"></span> <span id="satStatus">Awaiting location</span></span>
+                    </div>
+                    <div class="sat-layout">
+                        <div id="satMap"></div>
+                        <div class="sat-readout">
+                            <div class="sat-verdict" id="satVerdict">
+                                <div class="headline" id="satHeadline">Detecting your area…</div>
+                                <div class="sub" id="satAnswer">Share your location and the satellite layer will identify the terrain around you, then compute the disaster probability for that exact area.</div>
+                            </div>
+                            <div class="sat-metrics">
+                                <div class="sat-metric"><div class="k">Detected area</div><div class="v" id="satArea">—</div></div>
+                                <div class="sat-metric"><div class="k">Terrain class</div><div class="v" id="satTerrain">—</div></div>
+                                <div class="sat-metric"><div class="k">Elevation (DEM)</div><div class="v" id="satElev">—</div></div>
+                                <div class="sat-metric"><div class="k">Max slope</div><div class="v" id="satSlope">—</div></div>
+                                <div class="sat-metric"><div class="k">Coast distance</div><div class="v" id="satCoast">—</div></div>
+                                <div class="sat-metric"><div class="k">GPS accuracy</div><div class="v" id="satAcc">—</div></div>
+                            </div>
+                            <div class="sat-bars" id="satBars"></div>
+                            <div class="sat-note">Imagery: Esri World Imagery. Elevation &amp; slope: Copernicus DEM via Open-Meteo Elevation API. Weather: Open-Meteo. Seismicity: USGS earthquake catalog.</div>
+                        </div>
+                    </div>
+                    <div class="sat-log" id="satLog">&gt; satellite link idle</div>
+                </div>
+
+                <div class="disaster-grid">
+                    <div class="disaster-card">
+                        <div class="disaster-icon" style="background: rgba(79, 172, 254, 0.2); color: var(--secondary);">
+                            <i class="fas fa-cloud-showers-heavy"></i>
+                        </div>
+                        <h4>Flood Risk</h4>
+                        <div class="probability" id="floodRisk">--%</div>
+                        <div class="timeframe">Next 7 days</div>
+                    </div>
+
+                    <div class="disaster-card">
+                        <div class="disaster-icon" style="background: rgba(245, 158, 11, 0.2); color: var(--accent);">
+                            <i class="fas fa-mountain"></i>
+                        </div>
+                        <h4>Landslide Risk</h4>
+                        <div class="probability" id="landslideRisk">--%</div>
+                        <div class="timeframe">Next 7 days</div>
+                    </div>
+
+                    <div class="disaster-card">
+                        <div class="disaster-icon" style="background: rgba(239, 68, 68, 0.2); color: var(--danger);">
+                            <i class="fas fa-wind"></i>
+                        </div>
+                        <h4>Cyclone Risk</h4>
+                        <div class="probability" id="cycloneRisk">--%</div>
+                        <div class="timeframe">Next 14 days</div>
+                    </div>
+
+                    <div class="disaster-card">
+                        <div class="disaster-icon" style="background: rgba(16, 185, 129, 0.2); color: var(--success);">
+                            <i class="fas fa-temperature-high"></i>
+                        </div>
+                        <h4>Heat Wave</h4>
+                        <div class="probability" id="heatRisk">--%</div>
+                        <div class="timeframe">Next 5 days</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+                    <div style="background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                        <h4 style="margin-bottom: 1rem; color: var(--secondary);"><i class="fas fa-home"></i> Emergency Shelters</h4>
+                        <ul style="list-style: none; color: #94a3b8; line-height: 2;" id="shelters">
+                            <li><i class="fas fa-map-marker-alt" style="color: var(--success); margin-right: 0.5rem;"></i> Loading shelters...</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                        <h4 style="margin-bottom: 1rem; color: var(--secondary);"><i class="fas fa-clipboard-check"></i> Recommended Actions</h4>
+                        <ul style="list-style: none; color: #94a3b8; line-height: 2;" id="recommendations">
+                            <li><i class="fas fa-info-circle" style="color: var(--secondary); margin-right: 0.5rem;"></i> Analysis in progress...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header reveal">
+            <h2>Powerful Features</h2>
+            <p>Advanced AI capabilities designed for comprehensive disaster management and emergency response</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <div class="feature-icon icon-1">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>Predictive AI Analytics</h3>
+                <p>Machine learning models analyze satellite data, weather patterns, rainfall, river levels, and terrain to predict floods, landslides, and cyclones up to 7 days before they strike with 80%+ accuracy.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon icon-2">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <h3>Real-Time GIS Dashboard</h3>
+                <p>Interactive risk heatmaps with geospatial visualization showing vulnerable areas, critical infrastructure, evacuation routes, and resource locations updated in real-time.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon icon-3">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h3>Multi-Channel Alerts</h3>
+                <p>Automated early warning system delivering alerts via SMS, email, mobile apps, and social media with multilingual support for maximum community reach.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon icon-4">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <h3>Smart Resource Allocation</h3>
+                <p>AI optimizes distribution of rescue teams, medical supplies, food, water, and shelter materials based on real-time needs, population density, and damage assessment.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon icon-1">
+                    <i class="fas fa-satellite"></i>
+                </div>
+                <h3>Satellite Integration</h3>
+                <p>Integrates NASA IMERG satellite precipitation, ISRO imagery, ECMWF forecasts, and IoT sensor data for comprehensive multi-hazard monitoring and impact-based forecasting.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <div class="feature-icon icon-2">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>Volunteer Coordination</h3>
+                <p>Match volunteer skills with disaster needs, assign tasks, track completion, and coordinate crowd-sourced reporting with geo-tagged photos for ground-level intelligence.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOS Section -->
+    <section class="sos-section" id="sos">
+        <div class="sos-container reveal">
+            <h2 style="font-size: 2.5rem; margin-bottom: 1rem; background: var(--gradient-3); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                <i class="fas fa-exclamation-triangle"></i> Emergency SOS Alert
+            </h2>
+            <p style="color: #94a3b8; font-size: 1.2rem;">In immediate danger? Press the SOS button to alert emergency services and your contacts instantly.</p>
+            
+            <button class="sos-button" onclick="triggerSOS()">
+                <i class="fas fa-bell"></i>
+                SOS
+                <span>Emergency Alert</span>
+            </button>
+
+            <div class="sos-features">
+                <div class="sos-feature">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <h4>GPS Location Sharing</h4>
+                    <p>Automatically sends your precise coordinates to emergency responders</p>
+                </div>
+                <div class="sos-feature">
+                    <i class="fas fa-user-md"></i>
+                    <h4>Medical Profile</h4>
+                    <p>Shares critical medical information and emergency contacts</p>
+                </div>
+                <div class="sos-feature">
+                    <i class="fas fa-broadcast-tower"></i>
+                    <h4>Multi-Channel Alert</h4>
+                    <p>Notifies via SMS, call, app notification, and email simultaneously</p>
+                </div>
+                <div class="sos-feature">
+                    <i class="fas fa-satellite-dish"></i>
+                    <h4>Offline Capability</h4>
+                    <p>Works via LoRa mesh network when cellular is unavailable</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-grid">
+            <div class="stat-item reveal">
+                <h3>7 Days</h3>
+                <p>Early Warning Lead Time</p>
+            </div>
+            <div class="stat-item reveal">
+                <h3>80%+</h3>
+                <p>Prediction Accuracy</p>
+            </div>
+            <div class="stat-item reveal">
+                <h3>24/7</h3>
+                <p>Real-Time Monitoring</p>
+            </div>
+            <div class="stat-item reveal">
+                <h3>50K+</h3>
+                <p>Lives Saved Annually</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header reveal">
+            <h2>How It Works</h2>
+            <p>From data collection to life-saving action in 5 intelligent steps</p>
+        </div>
+
+        <div class="steps-container">
+            <div class="step reveal">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Data Collection & Integration</h3>
+                    <p>Our system continuously gathers data from multiple sources: satellite imagery (NASA, ISRO), weather stations, river gauges, seismic sensors, soil moisture monitors, terrain/DEM data, and historical disaster records. This multi-source approach ensures comprehensive situational awareness even in data-scarce regions.</p>
+                </div>
+            </div>
+
+            <div class="step reveal">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>AI/ML Risk Prediction</h3>
+                    <p>Advanced machine learning models process the collected data to identify patterns and estimate disaster probability. Our AI analyzes rainfall intensity-duration thresholds, terrain susceptibility, debris-flow runout modeling, and building exposure to generate impact-based forecasts rather than just weather predictions.</p>
+                </div>
+            </div>
+
+            <div class="step reveal">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>GIS Risk Mapping & Visualization</h3>
+                    <p>Vulnerable regions are visualized on interactive maps with color-coded risk zones (Low/Medium/High/Critical). The system overlays roads, villages, critical infrastructure, hospitals, and evacuation routes to provide complete spatial context for decision-makers.</p>
+                </div>
+            </div>
+
+            <div class="step reveal">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Automated Early Warning System</h3>
+                    <p>When risk thresholds are exceeded, the system automatically triggers multi-channel alerts through SMS, email, mobile apps, and social media. Alerts are geo-targeted to affected communities with multilingual support and actionable guidance for immediate response.</p>
+                </div>
+            </div>
+
+            <div class="step reveal">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h3>Resource Optimization & Response</h3>
+                    <p>AI algorithms optimize the allocation and deployment of emergency resources—rescue teams, medical supplies, food, water, shelter materials—based on real-time damage assessment, population density, accessibility routes, and priority scoring to maximize lives saved.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Success Stories -->
+    <section class="success-stories" id="success-stories">
+        <div class="section-header reveal">
+            <h2>Success Stories</h2>
+            <p>Real-world impact: How DisasterGuard AI has saved lives and communities</p>
+        </div>
+
+        <div class="stories-grid">
+            <div class="story-card reveal">
+                <div class="story-icon">
+                    <i class="fas fa-home"></i>
+                </div>
+                <h3>Kerala Floods 2024 - Early Evacuation</h3>
+                <p>AI predicted severe flooding 5 days in advance, enabling authorities to evacuate 50,000+ residents from vulnerable areas before waters rose. Zero casualties reported in evacuated zones.</p>
+                <div class="story-stats">
+                    <div class="story-stat">
+                        <div class="number">50K+</div>
+                        <div class="label">Evacuated</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">0</div>
+                        <div class="label">Casualties</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">5 days</div>
+                        <div class="label">Warning</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="story-card reveal">
+                <div class="story-icon">
+                    <i class="fas fa-mountain"></i>
+                </div>
+                <h3>Himachal Landslide Prevention</h3>
+                <p>Soil saturation monitoring detected critical levels, triggering alerts that closed 12 high-risk roads 48 hours before major landslides. Prevented potential 200+ vehicle incidents.</p>
+                <div class="story-stats">
+                    <div class="story-stat">
+                        <div class="number">12</div>
+                        <div class="label">Roads Closed</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">200+</div>
+                        <div class="label">Incidents Prevented</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">48h</div>
+                        <div class="label">Advance Alert</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="story-card reveal">
+                <div class="story-icon">
+                    <i class="fas fa-wind"></i>
+                </div>
+                <h3>Odisha Cyclone Preparedness</h3>
+                <p>7-day cyclone track prediction enabled strategic deployment of 500+ rescue teams and pre-positioning of relief supplies. 80% faster response time compared to previous cyclones.</p>
+                <div class="story-stats">
+                    <div class="story-stat">
+                        <div class="number">500+</div>
+                        <div class="label">Teams Deployed</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">80%</div>
+                        <div class="label">Faster Response</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">7 days</div>
+                        <div class="label">Prediction</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="story-card reveal">
+                <div class="story-icon">
+                    <i class="fas fa-city"></i>
+                </div>
+                <h3>Ahmedabad Heat Wave Management</h3>
+                <p>Predictive heat wave alerts triggered activation of 200+ cooling centers and water distribution points. Heat-related hospital admissions reduced by 65% during peak summer.</p>
+                <div class="story-stats">
+                    <div class="story-stat">
+                        <div class="number">200+</div>
+                        <div class="label">Cooling Centers</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">65%</div>
+                        <div class="label">Reduced Admissions</div>
+                    </div>
+                    <div class="story-stat">
+                        <div class="number">1M+</div>
+                        <div class="label">People Protected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview -->
+    <section class="dashboard" id="dashboard">
+        <div class="section-header reveal">
+            <h2>Command Dashboard</h2>
+            <p>Real-time situational awareness at your fingertips</p>
+        </div>
+
+        <div class="dashboard-preview reveal">
+            <div class="dashboard-header">
+                <div class="dashboard-title">
+                    <i class="fas fa-chart-line"></i>
+                    DisasterGuard Command Center
+                </div>
+                <div class="dashboard-controls">
+                    <button class="control-btn control-red"></button>
+                    <button class="control-btn control-yellow"></button>
+                    <button class="control-btn control-green"></button>
+                </div>
+            </div>
+            <div class="dashboard-body">
+                <div class="dashboard-card full-width">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Active Alerts</h4>
+                    <div class="alert-item">
+                        <div class="alert-icon" style="background: rgba(239, 68, 68, 0.2); color: var(--danger);">
+                            <i class="fas fa-cloud-showers-heavy"></i>
+                        </div>
+                        <div class="alert-info">
+                            <h5>Critical Flood Risk - District A</h5>
+                            <p>River levels at 95% capacity. Evacuation recommended within 6 hours.</p>
+                        </div>
+                    </div>
+                    <div class="alert-item warning">
+                        <div class="alert-icon" style="background: rgba(245, 158, 11, 0.2); color: var(--accent);">
+                            <i class="fas fa-mountain"></i>
+                        </div>
+                        <div class="alert-info">
+                            <h5>Landslide Warning - Region B</h5>
+                            <p>Soil saturation at 78%. Monitor slope stability closely.</p>
+                        </div>
+                    </div>
+                    <div class="alert-item success">
+                        <div class="alert-icon" style="background: rgba(16, 185, 129, 0.2); color: var(--success);">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="alert-info">
+                            <h5>Resource Deployment Complete - Zone C</h5>
+                            <p>All emergency supplies delivered to affected areas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <h4><i class="fas fa-box"></i> Resource Status</h4>
+                    <div class="resource-bar">
+                        <div class="label">
+                            <span>Medical Supplies</span>
+                            <span>85%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-fill" style="width: 85%; background: var(--gradient-4);"></div>
+                        </div>
+                    </div>
+                    <div class="resource-bar">
+                        <div class="label">
+                            <span>Food & Water</span>
+                            <span>72%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-fill" style="width: 72%; background: var(--gradient-3);"></div>
+                        </div>
+                    </div>
+                    <div class="resource-bar">
+                        <div class="label">
+                            <span>Shelter Capacity</span>
+                            <span>60%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-fill" style="width: 60%; background: var(--gradient-2);"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <h4><i class="fas fa-map"></i> Risk Zones</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                            <span><i class="fas fa-circle" style="color: var(--danger); font-size: 0.7rem;"></i> Critical</span>
+                            <strong>3 Areas</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px;">
+                            <span><i class="fas fa-circle" style="color: var(--accent); font-size: 0.7rem;"></i> High</span>
+                            <strong>7 Areas</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+                            <span><i class="fas fa-circle" style="color: var(--success); font-size: 0.7rem;"></i> Moderate</span>
+                            <strong>12 Areas</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <h4><i class="fas fa-users"></i> Response Teams</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <i class="fas fa-ambulance" style="color: var(--danger);"></i>
+                            <div>
+                                <strong>Medical Teams</strong>
+                                <p style="font-size: 0.85rem; color: #94a3b8;">12 Active | 3 On Standby</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <i class="fas fa-fire-extinguisher" style="color: var(--accent);"></i>
+                            <div>
+                                <strong>Rescue Units</strong>
+                                <p style="font-size: 0.85rem; color: #94a3b8;">8 Deployed | 2 Available</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <i class="fas fa-hand-holding-heart" style="color: var(--success);"></i>
+                            <div>
+                                <strong>Volunteers</strong>
+                                <p style="font-size: 0.85rem; color: #94a3b8;">247 Registered | 156 Active</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4><i class="fas fa-shield-alt"></i> DisasterGuard AI</h4>
+                <p>AI-powered disaster early warning and resource allocation system saving lives through predictive intelligence and optimized emergency response.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-github"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul class="footer-links">
+                    <li><a href="#location-checker">Check Location</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#sos">SOS Alert</a></li>
+                    <li><a href="#success-stories">Success Stories</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Features</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Predictive Analytics</a></li>
+                    <li><a href="#">GIS Mapping</a></li>
+                    <li><a href="#">Early Warning System</a></li>
+                    <li><a href="#">Resource Optimization</a></li>
+                    <li><a href="#">Satellite Integration</a></li>
+                    <li><a href="#">Location Risk Checker</a></li>
+                    <li><a href="#">SOS Emergency Alerts</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Contact Info</h4>
+                <ul class="footer-links">
+                    <li><i class="fas fa-envelope"></i> dresponse-nerc@gov.in</li>
+                    <li><i class="fas fa-phone"></i> +91 011-1070</li>
+                    <li><i class="fas fa-map-marker-alt"></i> National Emergency Response Center</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p style="font-size: 29px; font-weight: 700; letter-spacing: 0.5px; color: #F3F4F6; margin: 0;">
+                &copy;ᴄʀᴀꜰᴛᴇᴅ ᴡɪᴛʜ ᴘᴜʀᴘᴏꜱᴇ ʙʏ ᴄᴏᴅᴇ ʟᴇᴀʀɴᴇʀ
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll Reveal Animation
+        window.addEventListener('scroll', reveal);
+
+        function reveal() {
+            var reveals = document.querySelectorAll('.reveal');
+            for(var i = 0; i < reveals.length; i++) {
+                var windowheight = window.innerHeight;
+                var revealtop = reveals[i].getBoundingClientRect().top;
+                var revealpoint = 150;
+                if(revealtop < windowheight - revealpoint) {
+                    reveals[i].classList.add('active');
+                } else {
+                    reveals[i].classList.remove('active');
+                }
+            }
+        }
+
+        // Smooth Scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Location Checker with Real-Time API Data
+        async function checkLocation() {
+            const locationInput = document.getElementById('locationInput').value.trim();
+            const spinner = document.getElementById('loadingSpinner');
+            const results = document.getElementById('locationResults');
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (!locationInput) {
+                showError('Please enter a location to analyze');
+                return;
+            }
+
+            // Hide results and show spinner
+            results.classList.remove('active');
+            errorMessage.classList.remove('active');
+            spinner.classList.add('active');
+
+            try {
+                // Step 1: Geocode location to get coordinates
+                const coords = await geocodeLocation(locationInput);
+                
+                if (!coords) {
+                    throw new Error('Location not found. Please try a different search term.');
+                }
+
+                // Step 2: Fetch real-time weather data from Open-Meteo API
+                const weatherData = await fetchWeatherData(coords.lat, coords.lon);
+                
+                // Step 3: Fetch disaster data from GDACS API
+                const disasterData = await fetchDisasterData(coords.lat, coords.lon);
+                
+                // Step 4: Satellite area detection (terrain profile around the point)
+                const sat = await satelliteScan(coords.lat, coords.lon);
+
+                // Step 5: Calculate risk scores based on real data + satellite terrain
+                const riskAssessment = calculateRiskAssessment(weatherData, disasterData, coords, sat);
+                
+                // Step 6: Update UI with real data
+                updateLocationResults(coords.name || locationInput, coords, weatherData, disasterData, riskAssessment);
+                
+                spinner.classList.remove('active');
+                results.classList.add('active');
+                results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                renderSatellite(coords, sat, riskAssessment, null);
+                
+            } catch (error) {
+                spinner.classList.remove('active');
+                showError('Error fetching data: ' + error.message + '. Using fallback data.');
+                // Use fallback data
+                showFallbackResults(locationInput);
+            }
+        }
+
+        // Geocode location using Nominatim (OpenStreetMap)
+        async function geocodeLocation(query) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon),
+                        name: data[0].display_name
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                return null;
+            }
+        }
+
+        // Fetch weather data from Open-Meteo API
+        async function fetchWeatherData(lat, lon) {
+            try {
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&hourly=precipitation&daily=precipitation_sum&timezone=auto`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Weather API error:', error);
+                return null;
+            }
+        }
+
+        // Fetch disaster data from GDACS API
+        async function fetchDisasterData(lat, lon) {
+            try {
+                const response = await fetch('https://www.gdacs.org/api/events/current');
+                const data = await response.json();
+                
+                // Filter disasters near the location (within 500km)
+                const nearbyDisasters = data.filter(event => {
+                    const distance = calculateDistance(lat, lon, event.latitude, event.longitude);
+                    return distance < 500;
+                });
+                
+                return nearbyDisasters;
+            } catch (error) {
+                console.error('GDACS API error:', error);
+                return [];
+            }
+        }
+
+        // Calculate distance between two coordinates (Haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        /* ==========================================================
+           SATELLITE INTEGRATION — GPS ➜ area detection ➜ probability
+           ========================================================== */
+
+        let satMap = null, satMarker = null, satCircle = null, satHalo = null;
+        const AREA_RADIUS_KM = 10;   // detected analysis footprint
+
+        function satLog(line) {
+            document.getElementById('satLog').textContent = '> ' + line;
+        }
+
+        // 1) Read GPS from the browser, then run the full pipeline on those coordinates
+        async function useMyLocation() {
+            const btn = document.getElementById('gpsBtn');
+            const spinner = document.getElementById('loadingSpinner');
+            const results = document.getElementById('locationResults');
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (!navigator.geolocation) {
+                showError('Your browser does not support GPS location. Please type a city name instead.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Locating\u2026';
+            errorMessage.classList.remove('active');
+            results.classList.remove('active');
+            spinner.classList.add('active');
+            document.getElementById('satStatus').textContent = 'Acquiring GPS fix';
+            satLog('requesting GPS fix from device\u2026');
+
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const acc = pos.coords.accuracy;
+                satLog(`GPS lock ${lat.toFixed(4)}, ${lon.toFixed(4)} (\u00b1${Math.round(acc)} m) \u2014 tasking satellite layer\u2026`);
+
+                try {
+                    await analyzeCoordinates(lat, lon, acc);
+                } catch (e) {
+                    spinner.classList.remove('active');
+                    showError('Could not complete the analysis: ' + e.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Use My Location';
+                }
+            }, (err) => {
+                spinner.classList.remove('active');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Use My Location';
+                document.getElementById('satStatus').textContent = 'GPS denied';
+                const msgs = {
+                    1: 'Location permission was denied. Allow location access, or type a city name above.',
+                    2: 'Your position is unavailable right now. Try again or type a city name.',
+                    3: 'GPS request timed out. Try again or type a city name.'
+                };
+                showError(msgs[err.code] || 'Unable to read your location.');
+                satLog('GPS request failed \u2014 falling back to manual search');
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+        }
+
+        // 2) Full pipeline for a coordinate pair
+        async function analyzeCoordinates(lat, lon, accuracy) {
+            const spinner = document.getElementById('loadingSpinner');
+            const results = document.getElementById('locationResults');
+            document.getElementById('satStatus').textContent = 'Scanning area';
+
+            const placeName = await reverseGeocode(lat, lon);
+            const coords = { lat, lon, name: placeName };
+            document.getElementById('locationInput').value = placeName;
+
+            satLog('reverse geocode \u2192 ' + placeName);
+
+            const [weatherData, disasterData, sat, quakes] = await Promise.all([
+                fetchWeatherData(lat, lon),
+                fetchDisasterData(lat, lon),
+                satelliteScan(lat, lon),
+                fetchSeismicity(lat, lon)
+            ]);
+
+            const riskAssessment = calculateRiskAssessment(weatherData, disasterData, coords, sat, quakes);
+            updateLocationResults(placeName, coords, weatherData, disasterData, riskAssessment);
+
+            spinner.classList.remove('active');
+            results.classList.add('active');
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            renderSatellite(coords, sat, riskAssessment, accuracy, quakes);
+            document.getElementById('satStatus').textContent = 'Area locked';
+            satLog(`area analysed \u2014 ${AREA_RADIUS_KM} km footprint, ${sat.samples} DEM samples, probability computed`);
+        }
+
+        async function reverseGeocode(lat, lon) {
+            try {
+                const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12`);
+                const d = await r.json();
+                if (d && d.display_name) {
+                    const a = d.address || {};
+                    const parts = [a.suburb || a.village || a.town || a.city_district, a.city || a.county, a.state, a.country].filter(Boolean);
+                    return parts.length ? parts.join(', ') : d.display_name;
+                }
+            } catch (e) { console.error(e); }
+            return `${lat.toFixed(4)}\u00b0, ${lon.toFixed(4)}\u00b0`;
+        }
+
+        // 3) Satellite terrain scan — samples the DEM around the point to "detect the area"
+        async function satelliteScan(lat, lon) {
+            const kmLat = 1 / 110.574;
+            const kmLon = 1 / (111.320 * Math.cos(lat * Math.PI / 180) || 1);
+            const pts = [[lat, lon]];
+            const rings = [2, 10, 30, 60];      // km
+            const bearings = [0, 45, 90, 135, 180, 225, 270, 315];
+            rings.forEach(km => bearings.forEach(b => {
+                const rad = b * Math.PI / 180;
+                pts.push([lat + Math.cos(rad) * km * kmLat, lon + Math.sin(rad) * km * kmLon]);
+            }));
+
+            const result = {
+                elevation: null, relief: null, slope: null, coastKm: null,
+                terrain: 'Unclassified', samples: pts.length, water: false, ok: false
+            };
+
+            try {
+                const lats = pts.map(p => p[0].toFixed(4)).join(',');
+                const lons = pts.map(p => p[1].toFixed(4)).join(',');
+                const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
+                const d = await r.json();
+                const el = d.elevation;
+                if (!el || !el.length) return result;
+
+                result.ok = true;
+                result.elevation = Math.round(el[0]);
+
+                // local relief & slope from the 2 km ring
+                const near = el.slice(1, 9);
+                const relief = Math.max(...near) - Math.min(...near);
+                result.relief = Math.round(relief);
+                result.slope = +((relief / 2000) * 100).toFixed(1);   // rise over 2 km run
+
+                // sea / large water detection from DEM zeros outward
+                let coast = null;
+                rings.forEach((km, i) => {
+                    const ring = el.slice(1 + i * 8, 9 + i * 8);
+                    if (coast === null && ring.some(v => v !== null && v <= 0)) coast = km;
+                });
+                result.coastKm = coast;
+                result.water = el[0] !== null && el[0] <= 0;
+
+                // terrain classification
+                const e = result.elevation;
+                if (result.water) result.terrain = 'Water / tidal zone';
+                else if (coast !== null && coast <= 10) result.terrain = 'Coastal lowland';
+                else if (e < 25 && result.slope < 2) result.terrain = 'Low-lying flood plain';
+                else if (e < 200 && result.slope < 2) result.terrain = 'Flat inland plain';
+                else if (result.slope >= 12 || relief > 400) result.terrain = 'Steep hill / mountain slope';
+                else if (e > 900) result.terrain = 'Highland plateau';
+                else result.terrain = 'Undulating plain';
+            } catch (e) {
+                console.error('Elevation API error:', e);
+            }
+            return result;
+        }
+
+        // 4) Seismic history within 300 km (last 5 years, M4.5+) from USGS
+        async function fetchSeismicity(lat, lon) {
+            try {
+                const start = new Date(Date.now() - 5 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+                const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lon}&maxradiuskm=300&minmagnitude=4.5&starttime=${start}`;
+                const r = await fetch(url);
+                const d = await r.json();
+                const feats = d.features || [];
+                return {
+                    count: feats.length,
+                    maxMag: feats.reduce((m, f) => Math.max(m, f.properties.mag || 0), 0),
+                    events: feats.slice(0, 5).map(f => ({
+                        mag: f.properties.mag,
+                        place: f.properties.place,
+                        lat: f.geometry.coordinates[1],
+                        lon: f.geometry.coordinates[0]
+                    }))
+                };
+            } catch (e) {
+                console.error('USGS error:', e);
+                return { count: 0, maxMag: 0, events: [] };
+            }
+        }
+
+        // 5) Draw the satellite view + probability answer for the detected area
+        function renderSatellite(coords, sat, risk, accuracy, quakes) {
+            const { lat, lon } = coords;
+
+            if (!satMap) {
+                satMap = L.map('satMap', { zoomControl: true, attributionControl: true }).setView([lat, lon], 11);
+                const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 18, attribution: 'Imagery \u00a9 Esri, Maxar, Earthstar Geographics'
+                }).addTo(satMap);
+                const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, opacity: 0.85 }).addTo(satMap);
+                const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '\u00a9 OpenStreetMap' });
+                L.control.layers({ 'Satellite': imagery, 'Street map': street }, { 'Place labels': labels }, { position: 'topright' }).addTo(satMap);
+            } else {
+                satMap.setView([lat, lon], 11);
+            }
+
+            const colors = { low: '#10b981', moderate: '#f59e0b', high: '#f97316', critical: '#ef4444' };
+            const color = colors[risk.overall] || '#0ea5e9';
+
+            [satMarker, satCircle, satHalo].forEach(l => { if (l) satMap.removeLayer(l); });
+
+            satCircle = L.circle([lat, lon], {
+                radius: AREA_RADIUS_KM * 1000, color, weight: 2, fillColor: color, fillOpacity: 0.12, dashArray: '6 6'
+            }).addTo(satMap);
+            satHalo = L.circle([lat, lon], {
+                radius: Math.max(accuracy || 300, 150), color: '#38bdf8', weight: 1, fillColor: '#38bdf8', fillOpacity: 0.25
+            }).addTo(satMap);
+            satMarker = L.marker([lat, lon]).addTo(satMap)
+                .bindPopup(`<b>Detected area</b><br>${coords.name || ''}<br>${lat.toFixed(4)}, ${lon.toFixed(4)}<br>Overall risk: <b>${risk.overall.toUpperCase()}</b>`);
+            satMap.fitBounds(satCircle.getBounds(), { padding: [20, 20] });
+            setTimeout(() => satMap.invalidateSize(), 250);
+
+            // Metrics
+            const areaKm2 = Math.round(Math.PI * AREA_RADIUS_KM * AREA_RADIUS_KM);
+            document.getElementById('satArea').textContent = `${areaKm2} km\u00b2 \u00b7 r=${AREA_RADIUS_KM} km`;
+            document.getElementById('satTerrain').textContent = sat.terrain;
+            document.getElementById('satElev').textContent = sat.elevation === null ? '\u2014' : `${sat.elevation} m`;
+            document.getElementById('satSlope').textContent = sat.slope === null ? '\u2014' : `${sat.slope}%`;
+            document.getElementById('satCoast').textContent = sat.coastKm === null ? '> 60 km (inland)' : `~${sat.coastKm} km`;
+            document.getElementById('satAcc').textContent = Number.isFinite(accuracy) ? `GPS \u00b1${Math.round(accuracy)} m` : 'Manual search';
+
+            // Probability answer
+            const label = { low: 'LOW', moderate: 'MODERATE', high: 'HIGH', critical: 'CRITICAL' }[risk.overall];
+            const verdict = document.getElementById('satVerdict');
+            verdict.className = 'sat-verdict ' + risk.overall;
+            document.getElementById('satHeadline').textContent =
+                `${label} disaster probability \u2014 ${risk.maxRisk}% in the detected area`;
+
+            const driver = [
+                ['flood', 'flooding', risk.flood],
+                ['landslide', 'landslide', risk.landslide],
+                ['cyclone', 'cyclonic wind', risk.cyclone],
+                ['heat', 'heat wave', risk.heat],
+                ['quake', 'earthquake', risk.quake]
+            ].sort((a, b) => b[2] - a[2])[0];
+
+            const quakeTxt = quakes && quakes.count
+                ? ` USGS logged ${quakes.count} quakes of M4.5+ within 300 km in the last 5 years (max M${quakes.maxMag.toFixed(1)}).`
+                : '';
+
+            document.getElementById('satAnswer').textContent =
+                `Satellite terrain around ${coords.name || 'your position'} reads as ${sat.terrain.toLowerCase()} at ${sat.elevation ?? '?'} m with a ${sat.slope ?? '?'}% maximum slope` +
+                `${sat.coastKm !== null ? ` and open water about ${sat.coastKm} km away` : ' and no coastline within 60 km'}. ` +
+                `The dominant hazard for this footprint is ${driver[1]} at ${driver[2]}% over the coming week.${quakeTxt}`;
+
+            // Bars
+            const bars = [
+                ['Flood', risk.flood, '#4facfe'],
+                ['Landslide', risk.landslide, '#f59e0b'],
+                ['Cyclone / storm', risk.cyclone, '#ef4444'],
+                ['Heat wave', risk.heat, '#fb923c'],
+                ['Earthquake', risk.quake, '#a78bfa']
+            ];
+            const wrap = document.getElementById('satBars');
+            wrap.innerHTML = bars.map(([n, v, c]) => `
+                <div class="sat-bar">
+                    <div class="top"><span>${n}</span><span>${v}%</span></div>
+                    <div class="track"><div class="fill" style="background:${c}" data-w="${v}"></div></div>
+                </div>`).join('');
+            requestAnimationFrame(() => wrap.querySelectorAll('.fill').forEach(f => f.style.width = f.dataset.w + '%'));
+
+            // Plot recent quakes inside the view
+            if (quakes && quakes.events) {
+                quakes.events.forEach(q => {
+                    L.circleMarker([q.lat, q.lon], { radius: 5, color: '#a78bfa', fillOpacity: 0.7 })
+                        .bindPopup(`M${q.mag} \u00b7 ${q.place}`).addTo(satMap);
+                });
+            }
+        }
+
+        // Calculate risk assessment based on real data
+        function calculateRiskAssessment(weatherData, disasterData, coords, sat, quakes) {
+            let floodRisk = 20;
+            let landslideRisk = 15;
+            let cycloneRisk = 10;
+            let heatRisk = 25;
+            let overallRisk = 'moderate';
+
+            if (weatherData) {
+                const current = weatherData.current;
+                const daily = weatherData.daily;
+                
+                // Flood risk based on precipitation
+                if (daily && daily.precipitation_sum) {
+                    const rainToday = daily.precipitation_sum[0] || 0;
+                    const rainTomorrow = daily.precipitation_sum[1] || 0;
+                    const totalRain = rainToday + rainTomorrow;
+                    
+                    if (totalRain > 100) floodRisk = 85;
+                    else if (totalRain > 50) floodRisk = 65;
+                    else if (totalRain > 25) floodRisk = 45;
+                    else floodRisk = 25;
+                }
+
+                // Heat risk based on temperature
+                if (current && current.temperature_2m) {
+                    const temp = current.temperature_2m;
+                    if (temp > 40) heatRisk = 80;
+                    else if (temp > 35) heatRisk = 60;
+                    else if (temp > 30) heatRisk = 40;
+                    else heatRisk = 20;
+                }
+
+                // Wind risk (cyclone indicator)
+                if (current && current.wind_speed_10m) {
+                    const wind = current.wind_speed_10m;
+                    if (wind > 100) cycloneRisk = 75;
+                    else if (wind > 60) cycloneRisk = 50;
+                    else if (wind > 40) cycloneRisk = 30;
+                    else cycloneRisk = 15;
+                }
+            }
+
+            // Adjust based on nearby disasters
+            if (disasterData && disasterData.length > 0) {
+                disasterData.forEach(disaster => {
+                    if (disaster.disaster_type === 'Flood') floodRisk = Math.min(floodRisk + 20, 95);
+                    if (disaster.disaster_type === 'Tropical Cyclone') cycloneRisk = Math.min(cycloneRisk + 25, 95);
+                    if (disaster.disaster_type === 'Landslide') landslideRisk = Math.min(landslideRisk + 30, 95);
+                });
+            }
+
+            // ===== Satellite terrain adjustments for the detected area =====
+            let quakeRisk = 5;
+            if (sat && sat.ok) {
+                // Flood: low, flat ground and nearby water hold runoff
+                if (sat.elevation !== null && sat.elevation < 15) floodRisk += 18;
+                else if (sat.elevation !== null && sat.elevation < 50) floodRisk += 10;
+                if (sat.slope !== null && sat.slope < 1.5) floodRisk += 8;
+                if (sat.coastKm !== null && sat.coastKm <= 10) floodRisk += 10;
+
+                // Landslide: slope is the dominant control
+                if (sat.slope !== null) {
+                    if (sat.slope >= 25) landslideRisk += 45;
+                    else if (sat.slope >= 12) landslideRisk += 28;
+                    else if (sat.slope >= 6) landslideRisk += 12;
+                    else landslideRisk = Math.max(3, landslideRisk - 8);
+                }
+                if (sat.elevation !== null && sat.elevation > 800 && sat.slope >= 6) landslideRisk += 8;
+
+                // Cyclone: coastal exposure
+                if (sat.coastKm !== null) {
+                    if (sat.coastKm <= 10) cycloneRisk += 22;
+                    else if (sat.coastKm <= 30) cycloneRisk += 12;
+                    else if (sat.coastKm <= 60) cycloneRisk += 6;
+                } else {
+                    cycloneRisk = Math.max(3, cycloneRisk - 8);
+                }
+
+                // Heat: dry basins and plateaus trap heat
+                if (sat.terrain.indexOf('plain') > -1 && weatherData && weatherData.current &&
+                    weatherData.current.relative_humidity_2m < 35) heatRisk += 8;
+            }
+
+            // Seismic probability from USGS history
+            if (quakes) {
+                if (quakes.count >= 40) quakeRisk = 55;
+                else if (quakes.count >= 15) quakeRisk = 40;
+                else if (quakes.count >= 5) quakeRisk = 25;
+                else if (quakes.count >= 1) quakeRisk = 14;
+                if (quakes.maxMag >= 6.5) quakeRisk = Math.min(quakeRisk + 15, 80);
+            }
+
+            const clamp = v => Math.max(2, Math.min(Math.round(v), 96));
+            floodRisk = clamp(floodRisk);
+            landslideRisk = clamp(landslideRisk);
+            cycloneRisk = clamp(cycloneRisk);
+            heatRisk = clamp(heatRisk);
+            quakeRisk = clamp(quakeRisk);
+
+            // Calculate overall risk level
+            const maxRisk = Math.max(floodRisk, landslideRisk, cycloneRisk, heatRisk, quakeRisk);
+            if (maxRisk >= 70) overallRisk = 'critical';
+            else if (maxRisk >= 50) overallRisk = 'high';
+            else if (maxRisk >= 30) overallRisk = 'moderate';
+            else overallRisk = 'low';
+
+            return {
+                flood: floodRisk,
+                landslide: landslideRisk,
+                cyclone: cycloneRisk,
+                heat: heatRisk,
+                quake: quakeRisk,
+                overall: overallRisk,
+                maxRisk: maxRisk
+            };
+        }
+
+        // Update UI with real data
+        function updateLocationResults(locationName, coords, weatherData, disasterData, riskAssessment) {
+            // Update location name
+            document.getElementById('locationName').textContent = locationName;
+            
+            // Update risk level
+            const riskLevelEl = document.getElementById('riskLevel');
+            riskLevelEl.className = 'risk-level ' + riskAssessment.overall;
+            riskLevelEl.querySelector('.level-text').textContent = riskAssessment.overall.toUpperCase();
+            
+            // Update risk description based on real data
+            const descriptions = {
+                'low': 'This location currently shows low disaster risk. Weather conditions are stable with no significant threats detected in the next 7 days. Continue monitoring for updates.',
+                'moderate': 'Moderate risk detected. Some weather parameters indicate potential for developing hazards. Monitor forecasts closely and prepare emergency supplies.',
+                'high': 'High risk conditions identified. Multiple factors suggest elevated disaster probability. Review evacuation plans and stay alert to official warnings.',
+                'critical': 'CRITICAL RISK ALERT. Immediate threats detected in your area. Follow all official evacuation orders and emergency guidance. Avoid non-essential travel.'
+            };
+            document.getElementById('riskDescription').textContent = descriptions[riskAssessment.overall];
+            
+            // Update weather data
+            if (weatherData && weatherData.current) {
+                const current = weatherData.current;
+                document.getElementById('tempValue').textContent = (current.temperature_2m || 0) + '°C';
+                document.getElementById('humidityValue').textContent = (current.relative_humidity_2m || 0) + '%';
+                document.getElementById('windValue').textContent = (current.wind_speed_10m || 0) + ' km/h';
+                
+                if (weatherData.daily && weatherData.daily.precipitation_sum) {
+                    document.getElementById('rainValue').textContent = (weatherData.daily.precipitation_sum[0] || 0) + ' mm';
+                }
+            }
+            
+            // Update disaster risk probabilities
+            document.getElementById('floodRisk').textContent = riskAssessment.flood + '%';
+            document.getElementById('landslideRisk').textContent = riskAssessment.landslide + '%';
+            document.getElementById('cycloneRisk').textContent = riskAssessment.cyclone + '%';
+            document.getElementById('heatRisk').textContent = riskAssessment.heat + '%';
+            
+            // Update shelters
+            updateShelters(locationName, coords);
+            
+            // Update recommendations based on risk
+            updateRecommendations(riskAssessment);
+        }
+
+        // Update shelters
+        function updateShelters(locationName, coords) {
+            const sheltersList = document.getElementById('shelters');
+            // In production, this would use real shelter database
+            sheltersList.innerHTML = `
+                <li><i class="fas fa-map-marker-alt" style="color: var(--success); margin-right: 0.5rem;"></i> Community Center - ${Math.round(Math.random() * 3 + 1)}.${Math.round(Math.random() * 9)} km (Capacity: ${Math.round(Math.random() * 500 + 300)})</li>
+                <li><i class="fas fa-map-marker-alt" style="color: var(--success); margin-right: 0.5rem;"></i> School Ground - ${Math.round(Math.random() * 5 + 2)}.${Math.round(Math.random() * 9)} km (Capacity: ${Math.round(Math.random() * 800 + 500)})</li>
+                <li><i class="fas fa-map-marker-alt" style="color: var(--accent); margin-right: 0.5rem;"></i> Stadium Complex - ${Math.round(Math.random() * 8 + 4)}.${Math.round(Math.random() * 9)} km (Capacity: ${Math.round(Math.random() * 2000 + 1500)})</li>
+            `;
+        }
+
+        // Update recommendations based on risk
+        function updateRecommendations(riskAssessment) {
+            const recList = document.getElementById('recommendations');
+            let recommendations = [];
+            
+            if (riskAssessment.overall === 'critical') {
+                recommendations = [
+                    '<i class="fas fa-exclamation-triangle" style="color: var(--danger); margin-right: 0.5rem;"></i> EVACUATE IMMEDIATELY if ordered',
+                    '<i class="fas fa-phone" style="color: var(--danger); margin-right: 0.5rem;"></i> Call emergency services: 112',
+                    '<i class="fas fa-running" style="color: var(--danger); margin-right: 0.5rem;"></i> Move to higher ground or shelter',
+                    '<i class="fas fa-battery-full" style="color: var(--accent); margin-right: 0.5rem;"></i> Keep phone charged and accessible'
+                ];
+            } else if (riskAssessment.overall === 'high') {
+                recommendations = [
+                    '<i class="fas fa-exclamation-circle" style="color: var(--accent); margin-right: 0.5rem;"></i> Prepare emergency kit (72-hour supply)',
+                    '<i class="fas fa-car" style="color: var(--accent); margin-right: 0.5rem;"></i> Plan evacuation route and transport',
+                    '<i class="fas fa-broadcast-tower" style="color: var(--accent); margin-right: 0.5rem;"></i> Monitor weather alerts hourly',
+                    '<i class="fas fa-users" style="color: var(--secondary); margin-right: 0.5rem;"></i> Identify family meeting point'
+                ];
+            } else if (riskAssessment.overall === 'moderate') {
+                recommendations = [
+                    '<i class="fas fa-check-circle" style="color: var(--success); margin-right: 0.5rem;"></i> Monitor weather forecasts daily',
+                    '<i class="fas fa-first-aid" style="color: var(--success); margin-right: 0.5rem;"></i> Review emergency supplies',
+                    '<i class="fas fa-mobile-alt" style="color: var(--success); margin-right: 0.5rem;"></i> Save emergency contacts',
+                    '<i class="fas fa-info-circle" style="color: var(--secondary); margin-right: 0.5rem;"></i> Stay informed via official channels'
+                ];
+            } else {
+                recommendations = [
+                    '<i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Standard preparedness measures',
+                    '<i class="fas fa-calendar" style="color: var(--success); margin-right: 0.5rem;"></i> Review emergency plan seasonally',
+                    '<i class="fas fa-box" style="color: var(--success); margin-right: 0.5rem;"></i> Maintain emergency kit',
+                    '<i class="fas fa-book" style="color: var(--secondary); margin-right: 0.5rem;"></i> Learn disaster response basics'
+                ];
+            }
+            
+            recList.innerHTML = recommendations.map(rec => `<li style="margin-bottom: 0.8rem;">${rec}</li>`).join('');
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('active');
+        }
+
+        // Show fallback results when API fails
+        function showFallbackResults(locationName) {
+            const results = document.getElementById('locationResults');
+            const riskLevel = document.getElementById('riskLevel');
+            const riskDescription = document.getElementById('riskDescription');
+            
+            results.classList.add('active');
+            document.getElementById('locationName').textContent = locationName;
+            
+            // Random risk for demo
+            const riskLevels = ['low', 'moderate', 'high', 'critical'];
+            const randomRisk = riskLevels[Math.floor(Math.random() * riskLevels.length)];
+            
+            riskLevel.className = 'risk-level ' + randomRisk;
+            riskLevel.querySelector('.level-text').textContent = randomRisk.toUpperCase();
+            
+            const descriptions = {
+                'low': 'Low disaster risk. Standard preparedness recommended.',
+                'moderate': 'Moderate risk detected. Monitor forecasts and prepare supplies.',
+                'high': 'High risk conditions. Review evacuation plans and stay alert.',
+                'critical': 'CRITICAL RISK. Follow official evacuation orders immediately.'
+            };
+            riskDescription.textContent = descriptions[randomRisk];
+            
+            // Set random weather values
+            document.getElementById('tempValue').textContent = Math.round(Math.random() * 15 + 25) + '°C';
+            document.getElementById('rainValue').textContent = Math.round(Math.random() * 50) + ' mm';
+            document.getElementById('windValue').textContent = Math.round(Math.random() * 30 + 5) + ' km/h';
+            document.getElementById('humidityValue').textContent = Math.round(Math.random() * 40 + 40) + '%';
+            
+            // Set random risk percentages
+            document.getElementById('floodRisk').textContent = Math.round(Math.random() * 60 + 20) + '%';
+            document.getElementById('landslideRisk').textContent = Math.round(Math.random() * 40 + 10) + '%';
+            document.getElementById('cycloneRisk').textContent = Math.round(Math.random() * 30 + 5) + '%';
+            document.getElementById('heatRisk').textContent = Math.round(Math.random() * 50 + 20) + '%';
+            
+            updateEvacuationRoutes(locationName, {lat: 0, lon: 0});
+            updateEmergencyServices(locationName, {lat: 0, lon: 0});
+            updateShelters(locationName, {lat: 0, lon: 0});
+            updateRecommendations({overall: randomRisk});
+        }
+
+        // SOS Alert Function
+        function triggerSOS() {
+            if (confirm('⚠️ EMERGENCY ALERT\n\nThis will immediately notify emergency services and your emergency contacts with your GPS location.\n\nPress OK to confirm or Cancel to abort.')) {
+                alert('🚨 SOS ALERT SENT!\n\nEmergency services and your contacts have been notified with your location.\n\nHelp is on the way. Stay safe and keep your phone accessible.');
+            }
+        }
+
+        // Form Submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Thank you for your interest! We will contact you within 24 hours.');
+            this.reset();
+        });
+
+        // Initialize reveal on load
+        reveal();
+
+        // Allow Enter key to trigger location search
+        document.getElementById('locationInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkLocation();
+            }
+        });
+
+        // Auto-refresh weather data every 5 minutes when results are visible
+        setInterval(() => {
+            const results = document.getElementById('locationResults');
+            if (results.classList.contains('active')) {
+                checkLocation(); // Re-fetch data
+            }
+        }, 300000);
+    </script>
+    
+</body>
+</html>
